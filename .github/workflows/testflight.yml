@@ -6,6 +6,13 @@ on:
     paths-ignore:
       - '*.md'
       - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run – archive & export only, skip upload'
+        required: false
+        default: 'false'
+        type: boolean
 
 concurrency:
   group: testflight
@@ -93,6 +100,7 @@ jobs:
             -authenticationKeyPath "${{ env.API_KEY_PATH }}"
 
       - name: Upload to TestFlight
+        if: inputs.dry_run != true
         env:
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           API_KEY_ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -110,6 +118,10 @@ jobs:
       - name: Post build info
         if: success()
         run: |
-          echo "### TestFlight Build Uploaded" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "### TestFlight Dry Run Succeeded" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### TestFlight Build Uploaded" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- **Build:** ${{ env.BUILD_NUMBER }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
