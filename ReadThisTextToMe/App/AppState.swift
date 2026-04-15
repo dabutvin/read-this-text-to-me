@@ -10,6 +10,10 @@ final class AppState: ObservableObject {
     @Published var showSettings: Bool = false
     @Published var showError: Bool = false
 
+    /// Tracks clipboard text that the user explicitly dismissed via the X button,
+    /// so re-tapping "Paste Text" won't re-show the same content.
+    var lastDismissedClipboardText: String?
+
     let providerRegistry = ProviderRegistry()
     let speechService = SpeechService()
     let textProcessingService = TextProcessingService()
@@ -33,11 +37,20 @@ final class AppState: ObservableObject {
 
         do {
             let rawText = try await provider.extractText()
-            extractedText = textProcessingService.clean(rawText)
+            let cleaned = textProcessingService.clean(rawText)
 
-            if extractedText.isEmpty {
+            if cleaned.isEmpty {
                 throw AppError.noTextFound
             }
+
+            if let dismissed = lastDismissedClipboardText,
+               provider.id == "clipboard_text",
+               cleaned == dismissed {
+                throw AppError.noTextFound
+            }
+
+            extractedText = cleaned
+            lastDismissedClipboardText = nil
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -65,6 +78,12 @@ final class AppState: ObservableObject {
     func stop() {
         speechService.stop()
         speechState = .idle
+    }
+
+    func clearText() {
+        stop()
+        lastDismissedClipboardText = extractedText.isEmpty ? nil : extractedText
+        extractedText = ""
     }
 }
 

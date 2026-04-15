@@ -49,8 +49,7 @@ struct PlaybackControlsView: View {
                 }
 
                 Button {
-                    appState.stop()
-                    appState.extractedText = ""
+                    appState.clearText()
                 } label: {
                     Image(systemName: "xmark")
                         .font(.title2)
