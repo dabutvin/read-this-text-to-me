@@ -71,6 +71,57 @@ final class AppState: ObservableObject {
         isProcessing = false
     }
 
+    func processPastedText(_ strings: [String]) {
+        let raw = strings.joined(separator: "\n")
+        let cleaned = textProcessingService.clean(raw)
+
+        guard !cleaned.isEmpty else {
+            errorMessage = AppError.noTextFound.localizedDescription
+            showError = true
+            return
+        }
+
+        if let dismissed = lastDismissedClipboardText, cleaned == dismissed {
+            errorMessage = AppError.noTextFound.localizedDescription
+            showError = true
+            return
+        }
+
+        extractedText = cleaned
+        lastDismissedClipboardText = nil
+    }
+
+    func processPastedURL(_ strings: [String]) async {
+        guard let urlString = strings.first,
+              let url = URL(string: urlString),
+              url.scheme == "http" || url.scheme == "https" else {
+            errorMessage = AppError.urlExtractionFailed("No valid URL found").localizedDescription
+            showError = true
+            return
+        }
+
+        isProcessing = true
+        errorMessage = nil
+
+        do {
+            let service = URLExtractionService()
+            let rawText = try await service.extractText(from: url)
+            let cleaned = textProcessingService.clean(rawText)
+
+            if cleaned.isEmpty {
+                throw AppError.noTextFound
+            }
+
+            extractedText = cleaned
+            lastDismissedClipboardText = nil
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+
+        isProcessing = false
+    }
+
     func speak() {
         guard !extractedText.isEmpty else { return }
         speechService.speak(extractedText, rate: speechRate, voiceIdentifier: selectedVoiceIdentifier)
