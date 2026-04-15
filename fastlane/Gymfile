@@ -1,0 +1,6 @@
+project("ReadThisTextToMe.xcodeproj")
+scheme("ReadThisTextToMe")
+configuration("Release")
+clean(true)
+output_directory("./build")
+export_method("app-store")

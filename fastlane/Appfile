@@ -1,0 +1,14 @@
+app_identifier("com.readthistexttome.app")
+apple_id(ENV["APPLE_ID"])
+team_id(ENV["TEAM_ID"])
+
+itc_team_id(ENV["ITC_TEAM_ID"])
+
+for_platform :ios do
+  for_lane :beta do
+    app_identifier("com.readthistexttome.app")
+  end
+  for_lane :release do
+    app_identifier("com.readthistexttome.app")
+  end
+end

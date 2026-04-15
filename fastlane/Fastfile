@@ -1,0 +1,108 @@
+default_platform(:ios)
+
+platform :ios do
+
+  before_all do
+    setup_ci if ENV['CI']
+  end
+
+  desc "Run tests"
+  lane :test do
+    scan(
+      project: "ReadThisTextToMe.xcodeproj",
+      scheme: "ReadThisTextToMe",
+      device: "iPhone 16",
+      clean: true
+    )
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{ENV['APP_STORE_CONNECT_API_KEY_ID']}.p8"),
+      duration: 1200,
+      in_house: false
+    )
+
+    match(
+      type: "appstore",
+      git_url: ENV["MATCH_GIT_URL"],
+      app_identifier: "com.readthistexttome.app",
+      api_key: api_key,
+      readonly: true
+    )
+
+    build_app(
+      project: "ReadThisTextToMe.xcodeproj",
+      scheme: "ReadThisTextToMe",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.readthistexttome.app" => "match AppStore com.readthistexttome.app"
+        }
+      }
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      distribute_external: false
+    )
+  end
+
+  desc "Build and submit to App Store"
+  lane :release do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{ENV['APP_STORE_CONNECT_API_KEY_ID']}.p8"),
+      duration: 1200,
+      in_house: false
+    )
+
+    match(
+      type: "appstore",
+      git_url: ENV["MATCH_GIT_URL"],
+      app_identifier: "com.readthistexttome.app",
+      api_key: api_key,
+      readonly: true
+    )
+
+    version = ENV["VERSION"] || "0.1.0"
+    build_number = ENV["BUILD_NUMBER"] || Time.now.strftime("%Y%m%d%H%M")
+
+    increment_version_number(
+      version_number: version,
+      xcodeproj: "ReadThisTextToMe.xcodeproj"
+    )
+
+    increment_build_number(
+      build_number: build_number,
+      xcodeproj: "ReadThisTextToMe.xcodeproj"
+    )
+
+    build_app(
+      project: "ReadThisTextToMe.xcodeproj",
+      scheme: "ReadThisTextToMe",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.readthistexttome.app" => "match AppStore com.readthistexttome.app"
+        }
+      }
+    )
+
+    upload_to_app_store(
+      api_key: api_key,
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      skip_metadata: true,
+      skip_screenshots: true
+    )
+  end
+end
