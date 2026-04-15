@@ -13,6 +13,7 @@ final class SpeechService: NSObject, ObservableObject {
     private var fullText: String = ""
     private var lastSpokenCharacterIndex: Int = 0
     private var currentVoiceIdentifier: String?
+    private var currentUtterance: AVSpeechUtterance?
 
     override init() {
         super.init()
@@ -55,12 +56,10 @@ final class SpeechService: NSObject, ObservableObject {
     }
 
     func changeRate(_ rate: Float) {
-        guard isSpeaking, !fullText.isEmpty else { return }
+        guard (isSpeaking || isPaused), !fullText.isEmpty else { return }
         let resumeIndex = lastSpokenCharacterIndex
         synthesizer.stopSpeaking(at: .immediate)
 
-        isSpeaking = true
-        isPaused = false
         startUtterance(from: resumeIndex, rate: rate, voiceIdentifier: currentVoiceIdentifier)
     }
 
@@ -86,6 +85,7 @@ final class SpeechService: NSObject, ObservableObject {
     }
 
     func stop() {
+        currentUtterance = nil
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
         isPaused = false
@@ -118,6 +118,7 @@ final class SpeechService: NSObject, ObservableObject {
         utterance.pitchMultiplier = 1.0
         utterance.volume = 1.0
 
+        currentUtterance = utterance
         isSpeaking = true
         isPaused = false
         synthesizer.speak(utterance)
@@ -167,6 +168,7 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
     ) {
         let utteranceOffset = characterRange.location + characterRange.length
         Task { @MainActor in
+            guard utterance === self.currentUtterance else { return }
             let textLength = self.fullText.count
             guard textLength > 0 else { return }
 
@@ -182,6 +184,8 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
         didFinish utterance: AVSpeechUtterance
     ) {
         Task { @MainActor in
+            guard utterance === self.currentUtterance else { return }
+            self.currentUtterance = nil
             self.isSpeaking = false
             self.isPaused = false
             self.progress = 1.0
@@ -194,10 +198,12 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
         didCancel utterance: AVSpeechUtterance
     ) {
         Task { @MainActor in
-            if !self.isSpeaking {
-                self.progress = 0
-                self.onFinished?()
-            }
+            guard utterance === self.currentUtterance else { return }
+            self.currentUtterance = nil
+            self.isSpeaking = false
+            self.isPaused = false
+            self.progress = 0
+            self.onFinished?()
         }
     }
 }
