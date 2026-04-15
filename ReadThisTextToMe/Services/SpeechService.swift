@@ -131,6 +131,31 @@ final class SpeechService: NSObject, ObservableObject {
         } catch {
             print("Audio session configuration failed: \(error)")
         }
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+    }
+
+    @objc nonisolated private func handleInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        if type == .ended {
+            let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            if options.contains(.shouldResume) {
+                Task { @MainActor in
+                    if self.isPaused {
+                        self.resume()
+                    }
+                }
+            }
+        }
     }
 }
 
