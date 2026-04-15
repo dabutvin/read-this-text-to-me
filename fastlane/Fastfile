@@ -26,12 +26,13 @@ platform :ios do
       in_house: false
     )
 
-    match(
-      type: "appstore",
-      git_url: ENV["MATCH_GIT_URL"],
-      app_identifier: "com.readthistexttome.app",
-      api_key: api_key,
-      readonly: true
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "ReadThisTextToMe.xcodeproj",
+      team_id: ENV["TEAM_ID"],
+      bundle_identifier: "com.readthistexttome.app",
+      profile_uuid: ENV["PROVISIONING_PROFILE_UUID"],
+      code_sign_identity: "Apple Distribution"
     )
 
     build_app(
@@ -40,8 +41,9 @@ platform :ios do
       configuration: "Release",
       export_method: "app-store",
       export_options: {
+        signingStyle: "manual",
         provisioningProfiles: {
-          "com.readthistexttome.app" => "match AppStore com.readthistexttome.app"
+          "com.readthistexttome.app" => ENV["PROVISIONING_PROFILE_UUID"]
         }
       }
     )
@@ -63,14 +65,6 @@ platform :ios do
       in_house: false
     )
 
-    match(
-      type: "appstore",
-      git_url: ENV["MATCH_GIT_URL"],
-      app_identifier: "com.readthistexttome.app",
-      api_key: api_key,
-      readonly: true
-    )
-
     version = ENV["VERSION"] || "0.1.0"
     build_number = ENV["BUILD_NUMBER"] || Time.now.strftime("%Y%m%d%H%M")
 
@@ -84,14 +78,24 @@ platform :ios do
       xcodeproj: "ReadThisTextToMe.xcodeproj"
     )
 
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "ReadThisTextToMe.xcodeproj",
+      team_id: ENV["TEAM_ID"],
+      bundle_identifier: "com.readthistexttome.app",
+      profile_uuid: ENV["PROVISIONING_PROFILE_UUID"],
+      code_sign_identity: "Apple Distribution"
+    )
+
     build_app(
       project: "ReadThisTextToMe.xcodeproj",
       scheme: "ReadThisTextToMe",
       configuration: "Release",
       export_method: "app-store",
       export_options: {
+        signingStyle: "manual",
         provisioningProfiles: {
-          "com.readthistexttome.app" => "match AppStore com.readthistexttome.app"
+          "com.readthistexttome.app" => ENV["PROVISIONING_PROFILE_UUID"]
         }
       }
     )

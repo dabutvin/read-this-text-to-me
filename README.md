@@ -63,17 +63,19 @@ open ReadThisTextToMe.xcodeproj
 
 ### Required Secrets
 
-Set these in GitHub repo settings → Secrets:
+Set these in GitHub repo settings → Secrets and variables → Actions:
 
-| Secret | Purpose |
-|---|---|
-| `APPLE_ID` | Apple developer account |
-| `TEAM_ID` | Apple Developer Team ID |
-| `MATCH_PASSWORD` | Encrypts fastlane match certs |
-| `MATCH_GIT_URL` | Private repo for certs/profiles |
-| `APP_STORE_CONNECT_API_KEY_ID` | ASC API key ID |
-| `APP_STORE_CONNECT_ISSUER_ID` | ASC API issuer |
-| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8 content) |
+| Secret | Purpose | How to get it |
+|---|---|---|
+| `TEAM_ID` | Apple Developer Team ID | developer.apple.com → Membership |
+| `DISTRIBUTION_CERTIFICATE_BASE64` | Signing certificate (.p12), base64-encoded | Export from Keychain Access, then `base64 -i cert.p12` |
+| `DISTRIBUTION_CERTIFICATE_PASSWORD` | Password for the .p12 file | The password you set when exporting |
+| `PROVISIONING_PROFILE_BASE64` | App Store provisioning profile, base64-encoded | Download from developer.apple.com, then `base64 -i profile.mobileprovision` |
+| `APP_STORE_CONNECT_API_KEY_ID` | ASC API key ID | App Store Connect → Users → Integrations → Keys |
+| `APP_STORE_CONNECT_ISSUER_ID` | ASC API issuer ID | Same page as above |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8 file contents) | Downloaded when you create the key |
+
+No separate certificate repo needed — everything goes directly into GitHub Secrets.
 
 ## Adding a New Input Source
 

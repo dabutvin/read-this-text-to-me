@@ -259,10 +259,11 @@ Trigger: Push to main
 Steps:
   1. Checkout code
   2. Install XcodeGen, generate .xcodeproj
-  3. Install certs & provisioning profiles (fastlane match)
-  4. Build archive
-  5. Upload to TestFlight (fastlane pilot)
-  6. Post build number to PR/commit
+  3. Decode cert from secret → import into temp keychain
+  4. Decode provisioning profile from secret → install
+  5. Build archive with manual signing
+  6. Upload to TestFlight (fastlane pilot)
+  7. Clean up keychain
 ```
 
 #### 3. `release.yml` — On version tag
@@ -272,25 +273,33 @@ Trigger: Tag v*.*.*
 Steps:
   1. Checkout code
   2. Install XcodeGen, generate .xcodeproj
-  3. Install certs & provisioning profiles
+  3. Decode cert + profile from secrets → install
   4. Build release archive
   5. Upload to App Store Connect (fastlane deliver)
-  6. Create GitHub Release with changelog
+  6. Clean up keychain
+  7. Create GitHub Release with changelog
 ```
 
 ### Secrets Required (GitHub repo settings)
 
+All signing material goes directly into GitHub Secrets — no separate certificate repository needed.
+
 | Secret | Purpose |
 |---|---|
-| `APPLE_ID` | Apple developer account email |
-| `APP_SPECIFIC_PASSWORD` | For App Store Connect API |
-| `MATCH_PASSWORD` | Encrypts fastlane match certificates |
-| `MATCH_GIT_URL` | Private repo storing certs/profiles |
 | `TEAM_ID` | Apple Developer Team ID |
-| `OPENAI_API_KEY` | For OCR/TTS (bundled in builds or entered by user) |
-| `APP_STORE_CONNECT_API_KEY_ID` | ASC API key |
-| `APP_STORE_CONNECT_ISSUER_ID` | ASC API issuer |
-| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (p8) |
+| `DISTRIBUTION_CERTIFICATE_BASE64` | Signing certificate (.p12), base64-encoded |
+| `DISTRIBUTION_CERTIFICATE_PASSWORD` | Password for the .p12 file |
+| `PROVISIONING_PROFILE_BASE64` | App Store provisioning profile, base64-encoded |
+| `APP_STORE_CONNECT_API_KEY_ID` | ASC API key ID |
+| `APP_STORE_CONNECT_ISSUER_ID` | ASC API issuer ID |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8 file contents) |
+
+### How signing works in CI
+
+1. The workflow decodes the base64 certificate and imports it into a temporary macOS keychain
+2. The provisioning profile is decoded and installed to `~/Library/MobileDevice/Provisioning Profiles/`
+3. Fastlane builds with manual signing using the installed cert and profile
+4. The temporary keychain is cleaned up after the build
 
 ### Fastlane Setup
 
@@ -298,11 +307,8 @@ Steps:
 fastlane/
 ├── Appfile          # app_identifier, apple_id, team_id
 ├── Fastfile         # lanes: test, beta, release
-├── Matchfile        # cert/profile management config
 └── Gymfile          # build settings
 ```
-
-**Why fastlane match?** It stores signing certs and provisioning profiles in a private git repo. GitHub Actions checks them out automatically. No manual Xcode signing ever needed.
 
 ---
 
@@ -344,7 +350,7 @@ fastlane/
 - Dark/light mode polish
 
 ### Phase 5: Distribution
-- Fastlane match setup (certs/profiles)
+- Export signing cert + provisioning profile, base64-encode into GitHub Secrets
 - TestFlight workflow validated
 - App Store submission workflow
 - App Store listing (screenshots, description)
@@ -368,7 +374,7 @@ fastlane/
 | OpenAI for OCR | GPT-4o Vision | Best accuracy, handles any image/screenshot. Apple VN as free fallback |
 | System TTS first | AVSpeechSynthesizer | Free, offline, zero setup. OpenAI TTS later as upgrade |
 | Protocol-based providers | TextInputProvider | Dead simple to add new input types |
-| Fastlane for signing | match | Cloud-friendly cert management, no Xcode needed |
+| Direct cert secrets | Base64 in GitHub Secrets | No extra repo, decode into keychain at build time |
 
 ---
 
