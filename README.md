@@ -23,7 +23,7 @@ See [PLAN.md](PLAN.md) for the full architecture, phase plan, and CI/CD setup.
 
 | Layer | Choice |
 |---|---|
-| Language | Swift 5.9+ |
+| Language | Swift 6.2+ |
 | UI | SwiftUI |
 | Min iOS | 17.0 |
 | Project | XcodeGen (no .xcodeproj in repo) |
@@ -36,7 +36,7 @@ See [PLAN.md](PLAN.md) for the full architecture, phase plan, and CI/CD setup.
 
 ### Prerequisites
 
-- Xcode 16+ (for local dev) or just use GitHub Actions (no laptop needed)
+- Xcode 26+ (for local dev) or just use GitHub Actions (no laptop needed)
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
 
 ### Build locally
