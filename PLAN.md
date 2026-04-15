@@ -247,9 +247,8 @@ Trigger: Pull request to main
 Steps:
   1. Checkout code
   2. Install XcodeGen, generate .xcodeproj
-  3. Build (xcodebuild)
-  4. Run tests
-  5. Report status on PR
+  3. Build (xcodebuild, simulator destination, no signing)
+  4. Report status on PR
 ```
 
 #### 2. `testflight.yml` — On merge to main
@@ -371,7 +370,7 @@ That's it — 4 secrets total. No certificates, no provisioning profiles, no key
 
 ## Workflow: Adding a New Input Source
 
-1. Create `Sources/Providers/MyNewProvider.swift`
+1. Create `ReadThisTextToMe/Providers/MyNewProvider.swift`
 2. Implement `TextInputProvider` protocol
 3. Register it in `ProviderRegistry`
 4. That's it — it appears in the UI automatically

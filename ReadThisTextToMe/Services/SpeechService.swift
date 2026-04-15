@@ -8,7 +8,7 @@ final class SpeechService: NSObject, ObservableObject {
     @Published var isPaused = false
     @Published var progress: Double = 0
 
-    private var totalLength: Int = 0
+    var onFinished: (() -> Void)?
 
     override init() {
         super.init()
@@ -16,16 +16,15 @@ final class SpeechService: NSObject, ObservableObject {
         configureAudioSession()
     }
 
-    func speak(_ text: String) {
+    func speak(_ text: String, rate: Float = AVSpeechUtteranceDefaultSpeechRate) {
         stop()
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        utterance.rate = rate
         utterance.pitchMultiplier = 1.0
         utterance.volume = 1.0
 
-        totalLength = text.count
         progress = 0
         isSpeaking = true
         isPaused = false
@@ -70,7 +69,7 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
         let currentPosition = characterRange.location + characterRange.length
         let total = utterance.speechString.count
         Task { @MainActor in
-            self.progress = total > 0 ? Double(currentPosition) / Double(total) : 0
+            self.progress = total > 0 ? min(Double(currentPosition) / Double(total), 1.0) : 0
         }
     }
 
@@ -82,6 +81,19 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
             self.isSpeaking = false
             self.isPaused = false
             self.progress = 1.0
+            self.onFinished?()
+        }
+    }
+
+    nonisolated func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        didCancel utterance: AVSpeechUtterance
+    ) {
+        Task { @MainActor in
+            self.isSpeaking = false
+            self.isPaused = false
+            self.progress = 0
+            self.onFinished?()
         }
     }
 }

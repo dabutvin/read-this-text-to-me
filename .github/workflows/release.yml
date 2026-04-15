@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Build & Submit to App Store
@@ -38,7 +41,7 @@ jobs:
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
         run: |
           mkdir -p ./private_keys
-          echo -n "$API_KEY_BASE64" | base64 --decode > ./private_keys/AuthKey_${API_KEY_ID}.p8
+          echo "$API_KEY_BASE64" | base64 -d > ./private_keys/AuthKey_${API_KEY_ID}.p8
           echo "API_KEY_PATH=$(pwd)/private_keys/AuthKey_${API_KEY_ID}.p8" >> $GITHUB_ENV
 
       - name: Extract version from tag
@@ -62,15 +65,13 @@ jobs:
             MARKETING_VERSION=${{ env.VERSION }} \
             CURRENT_PROJECT_VERSION=${{ env.BUILD_NUMBER }} \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            | xcpretty --color
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Export & cloud-sign IPA
         env:
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           API_KEY_ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
-          set -o pipefail
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/ReadThisTextToMe.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
@@ -78,8 +79,7 @@ jobs:
             -allowProvisioningUpdates \
             -authenticationKeyIssuerID "$API_KEY_ISSUER" \
             -authenticationKeyID "$API_KEY_ID" \
-            -authenticationKeyPath "${{ env.API_KEY_PATH }}" \
-            | xcpretty --color
+            -authenticationKeyPath "${{ env.API_KEY_PATH }}"
 
       - name: Upload to App Store Connect
         env:

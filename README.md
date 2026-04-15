@@ -57,7 +57,7 @@ open ReadThisTextToMe.xcodeproj
 
 | Workflow | Trigger | Action |
 |---|---|---|
-| `ci.yml` | PR to main | Build + test |
+| `ci.yml` | PR to main | Build |
 | `testflight.yml` | Push to main | Build + upload to TestFlight |
 | `release.yml` | Tag `v*.*.*` | Build + submit to App Store |
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import PhotosUI
 
 struct MainView: View {
@@ -62,6 +63,7 @@ struct MainView: View {
         }
     }
 
+    @MainActor
     private func loadPhoto(_ item: PhotosPickerItem) async {
         guard let data = try? await item.loadTransferable(type: Data.self),
               let image = UIImage(data: data) else {
@@ -72,6 +74,7 @@ struct MainView: View {
         await processImage(image)
     }
 
+    @MainActor
     private func processImage(_ image: UIImage) async {
         appState.isProcessing = true
         do {

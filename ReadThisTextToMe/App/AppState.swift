@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 
 @MainActor
 final class AppState: ObservableObject {
@@ -14,7 +13,18 @@ final class AppState: ObservableObject {
     let speechService = SpeechService()
     let textProcessingService = TextProcessingService()
     lazy var ocrService = OCRService()
-    lazy var urlExtractionService = URLExtractionService()
+
+    init() {
+        speechService.onFinished = { [weak self] in
+            self?.speechState = .idle
+        }
+    }
+
+    var speechRate: Float {
+        let stored = UserDefaults.standard.double(forKey: "speech_rate")
+        let normalized = stored > 0 ? stored : 0.5
+        return Float(normalized) * AVSpeechUtteranceMaximumSpeechRate
+    }
 
     func processInput(from provider: any TextInputProvider) async {
         isProcessing = true
@@ -37,7 +47,7 @@ final class AppState: ObservableObject {
 
     func speak() {
         guard !extractedText.isEmpty else { return }
-        speechService.speak(extractedText)
+        speechService.speak(extractedText, rate: speechRate)
         speechState = .speaking
     }
 

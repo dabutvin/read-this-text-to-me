@@ -4,14 +4,16 @@ import Vision
 @MainActor
 final class OCRService: ObservableObject {
 
-    enum OCRMethod {
-        case appleVision
-        case openAI
+    enum OCRMethod: String {
+        case appleVision = "apple"
+        case openAI = "openai"
     }
 
-    var preferredMethod: OCRMethod = .appleVision
+    var preferredMethod: OCRMethod {
+        let stored = UserDefaults.standard.string(forKey: "ocr_method") ?? "apple"
+        return OCRMethod(rawValue: stored) ?? .appleVision
+    }
 
-    /// Recognize text in an image. Uses Apple Vision by default, OpenAI as upgrade.
     func recognizeText(in image: UIImage) async throws -> String {
         switch preferredMethod {
         case .appleVision:
