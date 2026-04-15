@@ -179,7 +179,7 @@ SpeechService.speak()
 
 | Layer | Technology |
 |---|---|
-| Language | Swift 5.9+ |
+| Language | Swift 6.2+ |
 | UI | SwiftUI |
 | Min iOS | 17.0 |
 | Project gen | XcodeGen (no .xcodeproj in repo) |
@@ -360,7 +360,7 @@ That's it — 4 secrets total. No certificates, no provisioning profiles, no key
 |---|---|---|
 | No .xcodeproj in repo | XcodeGen | Generated from `project.yml`, avoids merge conflicts, works with CI |
 | SwiftUI over UIKit | SwiftUI | Less code, declarative, good enough for this simple UI |
-| iOS 17+ minimum | Latest APIs | Live Text, modern SwiftUI, simpler codebase |
+| iOS 17+ minimum | Wide device support | Live Text, modern SwiftUI, simpler codebase |
 | OpenAI for OCR | GPT-4o Vision | Best accuracy, handles any image/screenshot. Apple VN as free fallback |
 | System TTS first | AVSpeechSynthesizer | Free, offline, zero setup. OpenAI TTS later as upgrade |
 | Protocol-based providers | TextInputProvider | Dead simple to add new input types |
