@@ -3,16 +3,20 @@ import AVFoundation
 @MainActor
 final class SpeechService: NSObject, ObservableObject {
     private let synthesizer = AVSpeechSynthesizer()
+    private var audioPlayer: AVAudioPlayer?
+    private var progressTimer: Timer?
 
     @Published var isSpeaking = false
     @Published var isPaused = false
     @Published var progress: Double = 0
+    @Published var isLoadingAudio = false
 
     var onFinished: (() -> Void)?
 
     private var fullText: String = ""
     private var lastSpokenCharacterIndex: Int = 0
     private var currentVoiceIdentifier: String?
+    private var activeEngine: TTSEngine = .system
 
     override init() {
         super.init()
@@ -44,10 +48,11 @@ final class SpeechService: NSObject, ObservableObject {
         return "\(voice.name) (\(quality) · \(region))"
     }
 
-    // MARK: - Playback
+    // MARK: - System TTS Playback
 
     func speak(_ text: String, rate: Float = AVSpeechUtteranceDefaultSpeechRate, voiceIdentifier: String? = nil) {
         stop()
+        activeEngine = .system
         fullText = text
         lastSpokenCharacterIndex = 0
         currentVoiceIdentifier = voiceIdentifier
@@ -55,7 +60,7 @@ final class SpeechService: NSObject, ObservableObject {
     }
 
     func changeRate(_ rate: Float) {
-        guard isSpeaking, !fullText.isEmpty else { return }
+        guard activeEngine == .system, isSpeaking, !fullText.isEmpty else { return }
         let resumeIndex = lastSpokenCharacterIndex
         synthesizer.stopSpeaking(at: .immediate)
 
@@ -65,7 +70,7 @@ final class SpeechService: NSObject, ObservableObject {
     }
 
     func changeVoice(identifier: String, rate: Float) {
-        guard isSpeaking, !fullText.isEmpty else { return }
+        guard activeEngine == .system, isSpeaking, !fullText.isEmpty else { return }
         let resumeIndex = lastSpokenCharacterIndex
         currentVoiceIdentifier = identifier
         synthesizer.stopSpeaking(at: .immediate)
@@ -75,26 +80,90 @@ final class SpeechService: NSObject, ObservableObject {
         startUtterance(from: resumeIndex, rate: rate, voiceIdentifier: identifier)
     }
 
+    // MARK: - OpenAI TTS Playback
+
+    func speakWithOpenAI(
+        _ text: String,
+        voice: OpenAIVoice,
+        model: OpenAITTSModel,
+        speed: Double
+    ) async throws {
+        stop()
+        activeEngine = .openai
+        fullText = text
+        isLoadingAudio = true
+
+        let client = OpenAIClient()
+
+        let chunks = chunkText(text, maxLength: 4096)
+        var allAudioData = Data()
+
+        for chunk in chunks {
+            let audioData = try await client.synthesizeSpeech(
+                text: chunk,
+                voice: voice,
+                model: model,
+                speed: speed
+            )
+            allAudioData.append(audioData)
+        }
+
+        isLoadingAudio = false
+
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("openai_tts_\(UUID().uuidString).mp3")
+        try allAudioData.write(to: tempURL)
+
+        let player = try AVAudioPlayer(contentsOf: tempURL)
+        player.delegate = self
+        self.audioPlayer = player
+
+        player.prepareToPlay()
+        player.play()
+
+        isSpeaking = true
+        isPaused = false
+        startProgressTimer()
+
+        try? FileManager.default.removeItem(at: tempURL)
+    }
+
+    // MARK: - Shared Controls
+
     func pause() {
-        synthesizer.pauseSpeaking(at: .word)
+        switch activeEngine {
+        case .system:
+            synthesizer.pauseSpeaking(at: .word)
+        case .openai:
+            audioPlayer?.pause()
+        }
         isPaused = true
     }
 
     func resume() {
-        synthesizer.continueSpeaking()
+        switch activeEngine {
+        case .system:
+            synthesizer.continueSpeaking()
+        case .openai:
+            audioPlayer?.play()
+            startProgressTimer()
+        }
         isPaused = false
     }
 
     func stop() {
+        stopProgressTimer()
         synthesizer.stopSpeaking(at: .immediate)
+        audioPlayer?.stop()
+        audioPlayer = nil
         isSpeaking = false
         isPaused = false
+        isLoadingAudio = false
         progress = 0
         fullText = ""
         lastSpokenCharacterIndex = 0
     }
 
-    // MARK: - Private
+    // MARK: - Private (System TTS)
 
     private func startUtterance(from characterIndex: Int, rate: Float, voiceIdentifier: String?) {
         guard characterIndex < fullText.count else {
@@ -123,6 +192,57 @@ final class SpeechService: NSObject, ObservableObject {
         synthesizer.speak(utterance)
     }
 
+    // MARK: - Private (OpenAI TTS)
+
+    private func chunkText(_ text: String, maxLength: Int) -> [String] {
+        guard text.count > maxLength else { return [text] }
+
+        var chunks: [String] = []
+        var remaining = text
+
+        while !remaining.isEmpty {
+            if remaining.count <= maxLength {
+                chunks.append(remaining)
+                break
+            }
+
+            let endIndex = remaining.index(remaining.startIndex, offsetBy: maxLength)
+            let searchRange = remaining.startIndex..<endIndex
+
+            var breakIndex = endIndex
+            if let sentenceEnd = remaining.range(of: ".", options: .backwards, range: searchRange) {
+                breakIndex = remaining.index(after: sentenceEnd.upperBound)
+            } else if let spaceEnd = remaining.range(of: " ", options: .backwards, range: searchRange) {
+                breakIndex = spaceEnd.upperBound
+            }
+
+            let chunk = String(remaining[remaining.startIndex..<breakIndex])
+            chunks.append(chunk)
+            remaining = String(remaining[breakIndex...])
+        }
+
+        return chunks
+    }
+
+    private func startProgressTimer() {
+        stopProgressTimer()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let player = self.audioPlayer else { return }
+                if player.duration > 0 {
+                    self.progress = player.currentTime / player.duration
+                }
+            }
+        }
+    }
+
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+    }
+
+    // MARK: - Audio Session
+
     private func configureAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
@@ -133,6 +253,8 @@ final class SpeechService: NSObject, ObservableObject {
         }
     }
 }
+
+// MARK: - AVSpeechSynthesizerDelegate
 
 extension SpeechService: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(
@@ -173,6 +295,21 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
                 self.progress = 0
                 self.onFinished?()
             }
+        }
+    }
+}
+
+// MARK: - AVAudioPlayerDelegate
+
+extension SpeechService: AVAudioPlayerDelegate {
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            self.stopProgressTimer()
+            self.isSpeaking = false
+            self.isPaused = false
+            self.progress = 1.0
+            self.audioPlayer = nil
+            self.onFinished?()
         }
     }
 }

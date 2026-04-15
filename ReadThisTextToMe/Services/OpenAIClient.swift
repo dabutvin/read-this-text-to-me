@@ -12,6 +12,52 @@ struct OpenAIClient {
         UserDefaults.standard.string(forKey: "openai_api_key")
     }
 
+    // MARK: - Text-to-Speech
+
+    func synthesizeSpeech(
+        text: String,
+        voice: OpenAIVoice = .nova,
+        model: OpenAITTSModel = .standard,
+        speed: Double = 1.0
+    ) async throws -> Data {
+        guard let apiKey = apiKey else {
+            throw AppError.ttsFailed("No OpenAI API key configured")
+        }
+
+        let url = URL(string: "\(baseURL)/audio/speech")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "model": model.rawValue,
+            "input": text,
+            "voice": voice.rawValue,
+            "response_format": "mp3",
+            "speed": speed
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? [String: Any],
+               let message = error["message"] as? String {
+                throw AppError.ttsFailed(message)
+            }
+            throw AppError.ttsFailed("OpenAI TTS API returned status \(statusCode)")
+        }
+
+        return data
+    }
+
+    // MARK: - OCR
+
     func recognizeText(base64Image: String) async throws -> String {
         guard let apiKey = apiKey else {
             throw AppError.ocrFailed("No OpenAI API key configured")

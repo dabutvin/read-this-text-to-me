@@ -39,12 +39,20 @@ struct PlaybackControlsView: View {
                         appState.resume()
                     }
                 } label: {
-                    Image(systemName: playButtonIcon)
-                        .font(.largeTitle)
-                        .fontWeight(.semibold)
-                        .frame(width: 64, height: 64)
-                        .background(.tint.opacity(0.1), in: Circle())
+                    ZStack {
+                        if appState.speechService.isLoadingAudio {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                        } else {
+                            Image(systemName: playButtonIcon)
+                                .font(.largeTitle)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .frame(width: 64, height: 64)
+                    .background(.tint.opacity(0.1), in: Circle())
                 }
+                .disabled(appState.speechService.isLoadingAudio)
 
                 Button {
                     appState.clearText()
