@@ -31,7 +31,7 @@ final class AppState: ObservableObject {
     }
 
     /// Tracks clipboard text that the user explicitly dismissed via the X button,
-    /// so re-tapping "Paste Text" won't re-show the same content.
+    /// so re-tapping "Paste" won't re-show the same content.
     var lastDismissedClipboardText: String?
 
     let providerRegistry = ProviderRegistry()
@@ -81,7 +81,7 @@ final class AppState: ObservableObject {
             }
 
             if let dismissed = lastDismissedClipboardText,
-               provider.id == "clipboard_text",
+               provider.id == "clipboard",
                cleaned == dismissed {
                 throw AppError.noTextFound
             }
@@ -96,8 +96,24 @@ final class AppState: ObservableObject {
         isProcessing = false
     }
 
-    func processPastedText(_ strings: [String]) {
-        let raw = strings.joined(separator: "\n")
+    func processPastedContent(_ strings: [String]) async {
+        let raw = strings.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !raw.isEmpty else {
+            errorMessage = AppError.noTextFound.localizedDescription
+            showError = true
+            return
+        }
+
+        if let url = URL(string: raw),
+           url.scheme == "http" || url.scheme == "https" {
+            await extractTextFromURL(url)
+        } else {
+            applyPastedText(raw)
+        }
+    }
+
+    private func applyPastedText(_ raw: String) {
         let cleaned = textProcessingService.clean(raw)
 
         guard !cleaned.isEmpty else {
@@ -116,15 +132,7 @@ final class AppState: ObservableObject {
         lastDismissedClipboardText = nil
     }
 
-    func processPastedURL(_ strings: [String]) async {
-        guard let urlString = strings.first,
-              let url = URL(string: urlString),
-              url.scheme == "http" || url.scheme == "https" else {
-            errorMessage = AppError.urlExtractionFailed("No valid URL found").localizedDescription
-            showError = true
-            return
-        }
-
+    private func extractTextFromURL(_ url: URL) async {
         isProcessing = true
         errorMessage = nil
 

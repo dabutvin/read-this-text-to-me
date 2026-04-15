@@ -11,12 +11,11 @@ struct InputSourceGrid: View {
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
-            pasteTextButton
-            pasteURLButton
+            pasteButton
 
             ForEach(appState.providerRegistry.providers, id: \.id) { provider in
                 switch provider.id {
-                case "clipboard_text", "url_text":
+                case "clipboard":
                     EmptyView()
                 default:
                     inputButton(for: provider)
@@ -25,21 +24,12 @@ struct InputSourceGrid: View {
         }
     }
 
-    private var pasteTextButton: some View {
+    private var pasteButton: some View {
         PasteButton(payloadType: String.self) { strings in
-            appState.processPastedText(strings)
+            Task { await appState.processPastedContent(strings) }
         }
         .buttonBorderShape(.roundedRectangle(radius: 16))
-        .labelStyle(PasteInputLabelStyle(icon: "doc.on.clipboard", label: "Paste Text"))
-        .tint(.clear)
-    }
-
-    private var pasteURLButton: some View {
-        PasteButton(payloadType: String.self) { strings in
-            Task { await appState.processPastedURL(strings) }
-        }
-        .buttonBorderShape(.roundedRectangle(radius: 16))
-        .labelStyle(PasteInputLabelStyle(icon: "link", label: "Paste URL"))
+        .labelStyle(PasteInputLabelStyle(icon: "doc.on.clipboard", label: "Paste"))
         .tint(.clear)
     }
 

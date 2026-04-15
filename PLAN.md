@@ -38,8 +38,7 @@ Adding a new input source = one new struct conforming to `TextInputProvider`. Th
 
 | Provider | Source | OCR needed? |
 |---|---|---|
-| `ClipboardTextProvider` | System clipboard (plain text) | No |
-| `URLTextProvider` | Paste or share a URL → extracts article text | No |
+| `ClipboardTextProvider` | System clipboard — auto-detects plain text vs URL | No |
 | `ClipboardImageProvider` | Image on clipboard → OCR → text | Yes |
 | `PhotoLibraryProvider` | Pick from photo library → OCR → text | Yes |
 | `CameraProvider` | Take a photo → OCR → text | Yes |
@@ -146,12 +145,12 @@ SpeechService.speak()
 │  ▶ Play    ⏸ Pause   ⏹ Stop │  ← playback controls
 │                             │
 │  ┌─────┐ ┌─────┐ ┌─────┐   │
-│  │ 📋  │ │ 🔗  │ │ 📷  │   │  ← input source grid
-│  │Paste│ │ URL │ │Photo│   │
+│  │ 📋  │ │ 📷  │ │ 📸  │   │  ← input source grid
+│  │Paste│ │Photo│ │Cam  │   │
 │  └─────┘ └─────┘ └─────┘   │
 │  ┌─────┐ ┌─────┐ ┌─────┐   │
-│  │ 📸  │ │ 🖼️  │ │ ... │   │
-│  │Cam  │ │Lib  │ │More │   │
+│  │ 🖼️  │ │ ... │ │     │   │
+│  │Lib  │ │More │ │     │   │
 │  └─────┘ └─────┘ └─────┘   │
 │                             │
 │          ⚙️ Settings         │
@@ -209,7 +208,6 @@ ReadThisTextToMe/
 ├── Providers/
 │   ├── ClipboardTextProvider.swift
 │   ├── ClipboardImageProvider.swift
-│   ├── URLTextProvider.swift
 │   ├── PhotoLibraryProvider.swift
 │   ├── CameraProvider.swift
 │   └── ScreenshotProvider.swift
@@ -329,7 +327,7 @@ That's it — 4 secrets total. No certificates, no provisioning profiles, no key
 
 ### Phase 3: URL Extraction
 - URLExtractionService (readability-style HTML → text)
-- URLTextProvider
+- URL detection integrated into ClipboardTextProvider (auto-detects pasted URLs)
 - Handle various URL types (articles, tweets, etc.)
 
 ### Phase 4: Polish

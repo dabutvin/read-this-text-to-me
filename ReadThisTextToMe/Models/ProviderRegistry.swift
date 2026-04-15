@@ -13,7 +13,6 @@ final class ProviderRegistry: ObservableObject {
     private func registerDefaults() {
         providers = [
             ClipboardTextProvider(),
-            URLTextProvider(),
             PhotoLibraryProvider(),
             CameraProvider(),
         ].sorted { $0.priority < $1.priority }
