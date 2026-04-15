@@ -1,7 +1,7 @@
 import Foundation
 import SwiftSoup
 
-actor URLExtractionService {
+struct URLExtractionService {
 
     func extractText(from url: URL) async throws -> String {
         let (data, response) = try await URLSession.shared.data(from: url)

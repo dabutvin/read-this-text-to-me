@@ -1,10 +1,11 @@
 import Foundation
 
-actor OpenAIClient {
+struct OpenAIClient {
     private let baseURL = "https://api.openai.com/v1"
 
     var hasAPIKey: Bool {
-        apiKey != nil && !apiKey!.isEmpty
+        let key = UserDefaults.standard.string(forKey: "openai_api_key")
+        return key != nil && !key!.isEmpty
     }
 
     private var apiKey: String? {
