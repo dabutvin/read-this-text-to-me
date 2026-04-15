@@ -218,8 +218,14 @@ final class AppState: ObservableObject {
     }
 
     private func applySpeedChange() {
-        if speechState == .speaking {
+        switch speechState {
+        case .speaking:
             speechService.changeRate(speechRate)
+        case .paused:
+            speechService.changeRate(speechRate)
+            speechState = .speaking
+        case .idle:
+            break
         }
     }
 }
