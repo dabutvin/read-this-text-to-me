@@ -288,7 +288,7 @@ Uses **Apple cloud-managed signing** — no certificates or provisioning profile
 | `TEAM_ID` | Apple Developer Team ID |
 | `APP_STORE_CONNECT_API_KEY_ID` | ASC API key ID |
 | `APP_STORE_CONNECT_ISSUER_ID` | ASC API issuer ID |
-| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8), base64-encoded |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8 raw text, including BEGIN/END lines) |
 
 That's it — 4 secrets total. No certificates, no provisioning profiles, no keychain manipulation.
 

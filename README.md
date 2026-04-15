@@ -72,9 +72,9 @@ Set these in GitHub repo settings → Secrets and variables → Actions:
 | `TEAM_ID` | Apple Developer Team ID | developer.apple.com → Membership |
 | `APP_STORE_CONNECT_API_KEY_ID` | API key ID | App Store Connect → Users and Access → Integrations → Keys |
 | `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID | Same page as above |
-| `APP_STORE_CONNECT_API_KEY_CONTENT` | API key (.p8 file), **base64-encoded** | `base64 -i AuthKey_XXXXX.p8` — you can only download it once |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | API key (.p8 file contents), **raw text** | Paste the full text including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` |
 
-That's it — 4 secrets. Apple handles certificates and provisioning profiles automatically in the cloud.
+That's it — 4 secrets, all plain text. Apple handles certificates and provisioning profiles automatically in the cloud.
 
 ## Adding a New Input Source
 
