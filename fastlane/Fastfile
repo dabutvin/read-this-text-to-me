@@ -1,0 +1,18 @@
+default_platform(:ios)
+
+platform :ios do
+
+  before_all do
+    setup_ci if ENV['CI']
+  end
+
+  desc "Run tests"
+  lane :test do
+    scan(
+      project: "ReadThisTextToMe.xcodeproj",
+      scheme: "ReadThisTextToMe",
+      device: "iPhone 16",
+      clean: true
+    )
+  end
+end
