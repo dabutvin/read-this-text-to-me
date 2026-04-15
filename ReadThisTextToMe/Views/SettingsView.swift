@@ -1,25 +1,35 @@
 import SwiftUI
+import AVFoundation
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @AppStorage("openai_api_key") private var apiKey = ""
     @AppStorage("ocr_method") private var ocrMethod = "apple"
-    @AppStorage("speech_rate") private var speechRate = 0.5
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Speech") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Speech Rate")
-                        HStack {
-                            Image(systemName: "tortoise")
-                                .foregroundStyle(.secondary)
-                            Slider(value: $speechRate, in: 0.0...1.0)
-                            Image(systemName: "hare")
-                                .foregroundStyle(.secondary)
-                        }
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Speed")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        SpeedSelectorView()
+                            .environmentObject(appState)
                     }
+                } header: {
+                    Text("Speech")
+                }
+
+                Section {
+                    VoicePickerView()
+                        .environmentObject(appState)
+                } header: {
+                    Text("Voice")
+                } footer: {
+                    Text("Premium and Enhanced voices sound more natural. Download additional voices in Settings → Accessibility → Spoken Content → Voices.")
                 }
 
                 Section("OCR") {
@@ -53,5 +63,38 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+struct VoicePickerView: View {
+    @EnvironmentObject private var appState: AppState
+
+    private var voices: [AVSpeechSynthesisVoice] {
+        SpeechService.availableVoices()
+    }
+
+    var body: some View {
+        if voices.isEmpty {
+            Text("No voices available")
+                .foregroundStyle(.secondary)
+        } else {
+            Picker("Voice", selection: voiceBinding) {
+                Text("System Default").tag("")
+                ForEach(voices, id: \.identifier) { voice in
+                    Text(SpeechService.voiceDisplayName(voice))
+                        .tag(voice.identifier)
+                }
+            }
+            .pickerStyle(.navigationLink)
+        }
+    }
+
+    private var voiceBinding: Binding<String> {
+        Binding(
+            get: { appState.selectedVoiceIdentifier ?? "" },
+            set: { newValue in
+                appState.setVoice(newValue.isEmpty ? nil : newValue)
+            }
+        )
     }
 }

@@ -10,26 +10,69 @@ final class SpeechService: NSObject, ObservableObject {
 
     var onFinished: (() -> Void)?
 
+    private var fullText: String = ""
+    private var lastSpokenCharacterIndex: Int = 0
+    private var currentVoiceIdentifier: String?
+
     override init() {
         super.init()
         synthesizer.delegate = self
         configureAudioSession()
     }
 
-    func speak(_ text: String, rate: Float = AVSpeechUtteranceDefaultSpeechRate) {
+    // MARK: - Voice helpers
+
+    static func availableVoices(for language: String = "en") -> [AVSpeechSynthesisVoice] {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language.hasPrefix(language) }
+            .sorted { lhs, rhs in
+                if lhs.quality != rhs.quality {
+                    return lhs.quality.rawValue > rhs.quality.rawValue
+                }
+                return lhs.name < rhs.name
+            }
+    }
+
+    static func voiceDisplayName(_ voice: AVSpeechSynthesisVoice) -> String {
+        let quality: String
+        switch voice.quality {
+        case .premium:  quality = "Premium"
+        case .enhanced: quality = "Enhanced"
+        default:        quality = "Default"
+        }
+        let region = Locale.current.localizedString(forLanguageCode: voice.language) ?? voice.language
+        return "\(voice.name) (\(quality) · \(region))"
+    }
+
+    // MARK: - Playback
+
+    func speak(_ text: String, rate: Float = AVSpeechUtteranceDefaultSpeechRate, voiceIdentifier: String? = nil) {
         stop()
+        fullText = text
+        lastSpokenCharacterIndex = 0
+        currentVoiceIdentifier = voiceIdentifier
+        startUtterance(from: 0, rate: rate, voiceIdentifier: voiceIdentifier)
+    }
 
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = rate
-        utterance.pitchMultiplier = 1.0
-        utterance.volume = 1.0
+    func changeRate(_ rate: Float) {
+        guard isSpeaking, !fullText.isEmpty else { return }
+        let resumeIndex = lastSpokenCharacterIndex
+        synthesizer.stopSpeaking(at: .immediate)
 
-        progress = 0
         isSpeaking = true
         isPaused = false
+        startUtterance(from: resumeIndex, rate: rate, voiceIdentifier: currentVoiceIdentifier)
+    }
 
-        synthesizer.speak(utterance)
+    func changeVoice(identifier: String, rate: Float) {
+        guard isSpeaking, !fullText.isEmpty else { return }
+        let resumeIndex = lastSpokenCharacterIndex
+        currentVoiceIdentifier = identifier
+        synthesizer.stopSpeaking(at: .immediate)
+
+        isSpeaking = true
+        isPaused = false
+        startUtterance(from: resumeIndex, rate: rate, voiceIdentifier: identifier)
     }
 
     func pause() {
@@ -47,6 +90,37 @@ final class SpeechService: NSObject, ObservableObject {
         isSpeaking = false
         isPaused = false
         progress = 0
+        fullText = ""
+        lastSpokenCharacterIndex = 0
+    }
+
+    // MARK: - Private
+
+    private func startUtterance(from characterIndex: Int, rate: Float, voiceIdentifier: String?) {
+        guard characterIndex < fullText.count else {
+            isSpeaking = false
+            onFinished?()
+            return
+        }
+
+        let startIndex = fullText.index(fullText.startIndex, offsetBy: characterIndex)
+        let remainingText = String(fullText[startIndex...])
+
+        let utterance = AVSpeechUtterance(string: remainingText)
+
+        if let id = voiceIdentifier, let voice = AVSpeechSynthesisVoice(identifier: id) {
+            utterance.voice = voice
+        } else {
+            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        }
+
+        utterance.rate = rate
+        utterance.pitchMultiplier = 1.0
+        utterance.volume = 1.0
+
+        isSpeaking = true
+        isPaused = false
+        synthesizer.speak(utterance)
     }
 
     private func configureAudioSession() {
@@ -66,10 +140,15 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
         willSpeakRangeOfSpeechString characterRange: NSRange,
         utterance: AVSpeechUtterance
     ) {
-        let currentPosition = characterRange.location + characterRange.length
-        let total = utterance.speechString.count
+        let utteranceOffset = characterRange.location + characterRange.length
         Task { @MainActor in
-            self.progress = total > 0 ? min(Double(currentPosition) / Double(total), 1.0) : 0
+            let textLength = self.fullText.count
+            guard textLength > 0 else { return }
+
+            let offsetFromFullText = textLength - utterance.speechString.count
+            let absolutePosition = offsetFromFullText + utteranceOffset
+            self.lastSpokenCharacterIndex = min(absolutePosition, textLength)
+            self.progress = min(Double(absolutePosition) / Double(textLength), 1.0)
         }
     }
 
@@ -90,10 +169,10 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
         didCancel utterance: AVSpeechUtterance
     ) {
         Task { @MainActor in
-            self.isSpeaking = false
-            self.isPaused = false
-            self.progress = 0
-            self.onFinished?()
+            if !self.isSpeaking {
+                self.progress = 0
+                self.onFinished?()
+            }
         }
     }
 }

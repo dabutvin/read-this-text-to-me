@@ -10,21 +10,33 @@ final class AppState: ObservableObject {
     @Published var showSettings: Bool = false
     @Published var showError: Bool = false
 
+    @Published var speechSpeed: SpeechSpeed {
+        didSet { UserDefaults.standard.set(speechSpeed.rawValue, forKey: "speech_speed") }
+    }
+
+    @Published var selectedVoiceIdentifier: String? {
+        didSet { UserDefaults.standard.set(selectedVoiceIdentifier ?? "", forKey: "selected_voice") }
+    }
+
     let providerRegistry = ProviderRegistry()
     let speechService = SpeechService()
     let textProcessingService = TextProcessingService()
     lazy var ocrService = OCRService()
 
     init() {
+        let storedSpeed = UserDefaults.standard.string(forKey: "speech_speed") ?? ""
+        self.speechSpeed = SpeechSpeed.from(stored: storedSpeed)
+
+        let storedVoice = UserDefaults.standard.string(forKey: "selected_voice") ?? ""
+        self.selectedVoiceIdentifier = storedVoice.isEmpty ? nil : storedVoice
+
         speechService.onFinished = { [weak self] in
             self?.speechState = .idle
         }
     }
 
     var speechRate: Float {
-        let stored = UserDefaults.standard.double(forKey: "speech_rate")
-        let normalized = stored > 0 ? stored : 0.5
-        return Float(normalized) * AVSpeechUtteranceMaximumSpeechRate
+        speechSpeed.utteranceRate
     }
 
     func processInput(from provider: any TextInputProvider) async {
@@ -48,7 +60,7 @@ final class AppState: ObservableObject {
 
     func speak() {
         guard !extractedText.isEmpty else { return }
-        speechService.speak(extractedText, rate: speechRate)
+        speechService.speak(extractedText, rate: speechRate, voiceIdentifier: selectedVoiceIdentifier)
         speechState = .speaking
     }
 
@@ -65,6 +77,29 @@ final class AppState: ObservableObject {
     func stop() {
         speechService.stop()
         speechState = .idle
+    }
+
+    func cycleSpeed() {
+        speechSpeed = speechSpeed.next
+        applySpeedChange()
+    }
+
+    func setSpeed(_ speed: SpeechSpeed) {
+        speechSpeed = speed
+        applySpeedChange()
+    }
+
+    func setVoice(_ identifier: String?) {
+        selectedVoiceIdentifier = identifier
+        if speechState == .speaking {
+            speechService.changeVoice(identifier: identifier ?? "", rate: speechRate)
+        }
+    }
+
+    private func applySpeedChange() {
+        if speechState == .speaking {
+            speechService.changeRate(speechRate)
+        }
     }
 }
 

@@ -5,7 +5,6 @@ struct PlaybackControlsView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -20,8 +19,7 @@ struct PlaybackControlsView: View {
             }
             .frame(height: 4)
 
-            // Controls
-            HStack(spacing: 32) {
+            HStack(spacing: 24) {
                 Button {
                     appState.stop()
                 } label: {
@@ -57,6 +55,9 @@ struct PlaybackControlsView: View {
                 }
             }
             .foregroundStyle(.primary)
+
+            SpeedSelectorView()
+                .environmentObject(appState)
         }
         .padding(.vertical, 8)
     }
@@ -66,6 +67,34 @@ struct PlaybackControlsView: View {
         case .idle: "play.fill"
         case .speaking: "pause.fill"
         case .paused: "play.fill"
+        }
+    }
+}
+
+struct SpeedSelectorView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(SpeechSpeed.allCases) { speed in
+                Button {
+                    appState.setSpeed(speed)
+                } label: {
+                    Text(speed.label)
+                        .font(.caption2)
+                        .fontWeight(appState.speechSpeed == speed ? .bold : .regular)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(
+                            appState.speechSpeed == speed
+                                ? AnyShapeStyle(.tint.opacity(0.15))
+                                : AnyShapeStyle(.clear)
+                        )
+                        .clipShape(Capsule())
+                        .foregroundStyle(appState.speechSpeed == speed ? .primary : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 }

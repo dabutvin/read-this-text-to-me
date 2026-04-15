@@ -40,6 +40,7 @@ struct MainView: View {
             }
             .sheet(isPresented: $appState.showSettings) {
                 SettingsView()
+                    .environmentObject(appState)
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraPicker { image in
