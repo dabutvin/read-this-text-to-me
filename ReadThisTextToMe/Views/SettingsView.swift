@@ -24,12 +24,51 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    VoicePickerView()
-                        .environmentObject(appState)
+                    Picker("Engine", selection: $appState.ttsEngine) {
+                        ForEach(TTSEngine.allCases) { engine in
+                            Text(engine.displayName).tag(engine)
+                        }
+                    }
                 } header: {
-                    Text("Voice")
+                    Text("Voice Engine")
                 } footer: {
-                    Text("Premium and Enhanced voices sound more natural. Download additional voices in Settings → Accessibility → Spoken Content → Voices.")
+                    if appState.ttsEngine == .openai {
+                        Text("OpenAI voices sound natural and expressive. Requires an API key and internet connection. Usage is billed to your OpenAI account.")
+                    } else {
+                        Text("System voices are free and work offline.")
+                    }
+                }
+
+                if appState.ttsEngine == .system {
+                    Section {
+                        VoicePickerView()
+                            .environmentObject(appState)
+                    } header: {
+                        Text("System Voice")
+                    } footer: {
+                        Text("Premium and Enhanced voices sound more natural. Download additional voices in Settings → Accessibility → Spoken Content → Voices.")
+                    }
+                }
+
+                if appState.ttsEngine == .openai {
+                    Section {
+                        OpenAIVoicePickerView()
+                            .environmentObject(appState)
+                    } header: {
+                        Text("OpenAI Voice")
+                    }
+
+                    Section {
+                        Picker("Quality", selection: $appState.openAITTSModel) {
+                            ForEach(OpenAITTSModel.allCases) { model in
+                                Text(model.displayName).tag(model)
+                            }
+                        }
+                    } header: {
+                        Text("Audio Quality")
+                    } footer: {
+                        Text("HD produces richer audio but takes slightly longer to generate.")
+                    }
                 }
 
                 Section("OCR") {
@@ -46,7 +85,7 @@ struct SettingsView: View {
                 } header: {
                     Text("OpenAI")
                 } footer: {
-                    Text("Required for OpenAI OCR. Get a key at platform.openai.com")
+                    Text("Required for OpenAI voices and OpenAI OCR. Get a key at platform.openai.com")
                 }
 
                 Section("About") {
@@ -96,5 +135,37 @@ struct VoicePickerView: View {
                 appState.setVoice(newValue.isEmpty ? nil : newValue)
             }
         )
+    }
+}
+
+struct OpenAIVoicePickerView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        ForEach(OpenAIVoice.allCases) { voice in
+            Button {
+                appState.openAIVoice = voice
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(voice.displayName)
+                            .foregroundStyle(.primary)
+                        Text(voice.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if appState.openAIVoice == voice {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(.tint)
+                            .fontWeight(.semibold)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
     }
 }

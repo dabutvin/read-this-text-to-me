@@ -18,6 +18,18 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(selectedVoiceIdentifier ?? "", forKey: "selected_voice") }
     }
 
+    @Published var ttsEngine: TTSEngine {
+        didSet { UserDefaults.standard.set(ttsEngine.rawValue, forKey: "tts_engine") }
+    }
+
+    @Published var openAIVoice: OpenAIVoice {
+        didSet { UserDefaults.standard.set(openAIVoice.rawValue, forKey: "openai_voice") }
+    }
+
+    @Published var openAITTSModel: OpenAITTSModel {
+        didSet { UserDefaults.standard.set(openAITTSModel.rawValue, forKey: "openai_tts_model") }
+    }
+
     /// Tracks clipboard text that the user explicitly dismissed via the X button,
     /// so re-tapping "Paste Text" won't re-show the same content.
     var lastDismissedClipboardText: String?
@@ -34,6 +46,15 @@ final class AppState: ObservableObject {
         let storedVoice = UserDefaults.standard.string(forKey: "selected_voice") ?? ""
         self.selectedVoiceIdentifier = storedVoice.isEmpty ? nil : storedVoice
 
+        let storedEngine = UserDefaults.standard.string(forKey: "tts_engine") ?? ""
+        self.ttsEngine = TTSEngine(rawValue: storedEngine) ?? .system
+
+        let storedOpenAIVoice = UserDefaults.standard.string(forKey: "openai_voice") ?? ""
+        self.openAIVoice = OpenAIVoice(rawValue: storedOpenAIVoice) ?? .nova
+
+        let storedTTSModel = UserDefaults.standard.string(forKey: "openai_tts_model") ?? ""
+        self.openAITTSModel = OpenAITTSModel(rawValue: storedTTSModel) ?? .standard
+
         speechService.onFinished = { [weak self] in
             self?.speechState = .idle
         }
@@ -41,6 +62,10 @@ final class AppState: ObservableObject {
 
     var speechRate: Float {
         speechSpeed.utteranceRate
+    }
+
+    var openAISpeedMultiplier: Double {
+        Double(speechSpeed.rawValue) ?? 1.0
     }
 
     func processInput(from provider: any TextInputProvider) async {
@@ -124,8 +149,34 @@ final class AppState: ObservableObject {
 
     func speak() {
         guard !extractedText.isEmpty else { return }
-        speechService.speak(extractedText, rate: speechRate, voiceIdentifier: selectedVoiceIdentifier)
-        speechState = .speaking
+
+        switch ttsEngine {
+        case .system:
+            speechService.speak(extractedText, rate: speechRate, voiceIdentifier: selectedVoiceIdentifier)
+            speechState = .speaking
+
+        case .openai:
+            guard OpenAIClient().hasAPIKey else {
+                errorMessage = "Add your OpenAI API key in Settings to use OpenAI voices."
+                showError = true
+                return
+            }
+            speechState = .speaking
+            Task {
+                do {
+                    try await speechService.speakWithOpenAI(
+                        extractedText,
+                        voice: openAIVoice,
+                        model: openAITTSModel,
+                        speed: openAISpeedMultiplier
+                    )
+                } catch {
+                    speechState = .idle
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
     }
 
     func pause() {
@@ -178,6 +229,7 @@ enum AppError: LocalizedError {
     case ocrFailed(String)
     case urlExtractionFailed(String)
     case providerUnavailable(String)
+    case ttsFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -189,6 +241,8 @@ enum AppError: LocalizedError {
             return "Could not extract text from URL: \(detail)"
         case .providerUnavailable(let name):
             return "\(name) is not available on this device."
+        case .ttsFailed(let detail):
+            return "Text-to-speech failed: \(detail)"
         }
     }
 }
