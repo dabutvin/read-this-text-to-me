@@ -51,9 +51,11 @@ jobs:
           BUILD_NUMBER=$(date +%Y%m%d%H%M)
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
 
-      - name: Archive (unsigned)
+      - name: Archive (cloud-signed)
         env:
           TEAM_ID: ${{ secrets.TEAM_ID }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_KEY_ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
           set -o pipefail
           xcodebuild archive \
@@ -62,12 +64,21 @@ jobs:
             -sdk iphoneos \
             -configuration Release \
             -archivePath $RUNNER_TEMP/ReadThisTextToMe.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyIssuerID "$API_KEY_ISSUER" \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyPath "${{ env.API_KEY_PATH }}" \
             MARKETING_VERSION=${{ env.VERSION }} \
-            CURRENT_PROJECT_VERSION=${{ env.BUILD_NUMBER }} \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CURRENT_PROJECT_VERSION=${{ env.BUILD_NUMBER }}
 
-      - name: Export & cloud-sign IPA
+      - name: Inject teamID into ExportOptions
+        env:
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM_ID" ExportOptions.plist 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Set :teamID $TEAM_ID" ExportOptions.plist
+
+      - name: Export IPA
         env:
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           API_KEY_ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
