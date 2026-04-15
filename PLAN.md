@@ -93,7 +93,7 @@ Adding a new input source = one new struct conforming to `TextInputProvider`. Th
 
 **TextProcessingService**: Cleans extracted text (strip HTML, fix encoding, chunk long text). Runs between extraction and speech.
 
-**SpeechService**: Starts with Apple's built-in `AVSpeechSynthesizer` (free, offline, good enough). Can upgrade to OpenAI TTS API for higher quality voices.
+**SpeechService**: Supports both Apple's built-in `AVSpeechSynthesizer` (free, offline) and **OpenAI TTS API** for natural, human-quality voices. Users pick their preferred engine in Settings. OpenAI TTS offers 10 distinct voices (Alloy, Ash, Ballad, Coral, Echo, Fable, Nova, Onyx, Sage, Shimmer) in Standard and HD quality tiers.
 
 **URLExtractionService**: Fetches a URL → strips HTML → returns clean article text. Uses a readability-style parser.
 
@@ -167,11 +167,13 @@ SpeechService.speak()
 
 ### Settings (minimal)
 
-- Voice selection (system voices)
-- Speech rate slider
+- Voice engine selection (System vs OpenAI)
+- System voice selection (from downloaded iOS voices)
+- OpenAI voice selection (10 natural voices with descriptions)
+- OpenAI audio quality (Standard vs HD)
+- Speech rate control
 - OpenAI API key entry
 - OCR preference (OpenAI vs on-device)
-- TTS preference (System vs OpenAI)
 
 ---
 
@@ -184,7 +186,7 @@ SpeechService.speak()
 | Min iOS | 17.0 |
 | Project gen | XcodeGen (no .xcodeproj in repo) |
 | Dependencies | Swift Package Manager |
-| TTS | AVSpeechSynthesizer (built-in), OpenAI TTS API (optional) |
+| TTS | AVSpeechSynthesizer (built-in), OpenAI TTS API (10 natural voices, Standard/HD) |
 | OCR | OpenAI Vision API, Apple Vision framework (fallback) |
 | Networking | URLSession + async/await |
 | URL extraction | SwiftSoup (HTML parsing) |
@@ -350,7 +352,7 @@ That's it — 4 secrets total. No certificates, no provisioning profiles, no key
 - Siri Shortcuts integration
 - Home screen widget
 - PDF support
-- OpenAI TTS as premium voice option
+- ~~OpenAI TTS as premium voice option~~ ✅ Implemented
 
 ---
 
@@ -362,7 +364,7 @@ That's it — 4 secrets total. No certificates, no provisioning profiles, no key
 | SwiftUI over UIKit | SwiftUI | Less code, declarative, good enough for this simple UI |
 | iOS 17+ minimum | Latest APIs | Live Text, modern SwiftUI, simpler codebase |
 | OpenAI for OCR | GPT-4o Vision | Best accuracy, handles any image/screenshot. Apple VN as free fallback |
-| System TTS first | AVSpeechSynthesizer | Free, offline, zero setup. OpenAI TTS later as upgrade |
+| Dual TTS engines | AVSpeechSynthesizer + OpenAI TTS | Free offline system voices as default; OpenAI TTS for natural, human-quality voices |
 | Protocol-based providers | TextInputProvider | Dead simple to add new input types |
 | Apple cloud signing | API key + `-allowProvisioningUpdates` | No certs to manage, no laptop needed, 4 secrets total |
 

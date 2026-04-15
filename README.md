@@ -28,7 +28,7 @@ See [PLAN.md](PLAN.md) for the full architecture, phase plan, and CI/CD setup.
 | Min iOS | 17.0 |
 | Project | XcodeGen (no .xcodeproj in repo) |
 | OCR | Apple Vision (free) / OpenAI Vision (best quality) |
-| TTS | AVSpeechSynthesizer (built-in) |
+| TTS | AVSpeechSynthesizer (built-in) / OpenAI TTS (natural voices) |
 | CI/CD | GitHub Actions + Apple cloud signing |
 | Distribution | TestFlight + App Store |
 
