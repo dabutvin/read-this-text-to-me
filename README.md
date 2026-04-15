@@ -29,7 +29,7 @@ See [PLAN.md](PLAN.md) for the full architecture, phase plan, and CI/CD setup.
 | Project | XcodeGen (no .xcodeproj in repo) |
 | OCR | Apple Vision (free) / OpenAI Vision (best quality) |
 | TTS | AVSpeechSynthesizer (built-in) |
-| CI/CD | GitHub Actions + fastlane |
+| CI/CD | GitHub Actions + Apple cloud signing |
 | Distribution | TestFlight + App Store |
 
 ## Development
@@ -63,19 +63,18 @@ open ReadThisTextToMe.xcodeproj
 
 ### Required Secrets
 
+Uses **Apple cloud-managed signing** — no certificates or provisioning profiles to manage. Just an API key.
+
 Set these in GitHub repo settings → Secrets and variables → Actions:
 
 | Secret | Purpose | How to get it |
 |---|---|---|
 | `TEAM_ID` | Apple Developer Team ID | developer.apple.com → Membership |
-| `DISTRIBUTION_CERTIFICATE_BASE64` | Signing certificate (.p12), base64-encoded | Export from Keychain Access, then `base64 -i cert.p12` |
-| `DISTRIBUTION_CERTIFICATE_PASSWORD` | Password for the .p12 file | The password you set when exporting |
-| `PROVISIONING_PROFILE_BASE64` | App Store provisioning profile, base64-encoded | Download from developer.apple.com, then `base64 -i profile.mobileprovision` |
-| `APP_STORE_CONNECT_API_KEY_ID` | ASC API key ID | App Store Connect → Users → Integrations → Keys |
-| `APP_STORE_CONNECT_ISSUER_ID` | ASC API issuer ID | Same page as above |
-| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8 file contents) | Downloaded when you create the key |
+| `APP_STORE_CONNECT_API_KEY_ID` | API key ID | App Store Connect → Users and Access → Integrations → Keys |
+| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID | Same page as above |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | API key (.p8 file), **base64-encoded** | `base64 -i AuthKey_XXXXX.p8` — you can only download it once |
 
-No separate certificate repo needed — everything goes directly into GitHub Secrets.
+That's it — 4 secrets. Apple handles certificates and provisioning profiles automatically in the cloud.
 
 ## Adding a New Input Source
 

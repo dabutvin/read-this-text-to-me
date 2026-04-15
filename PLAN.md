@@ -188,7 +188,7 @@ SpeechService.speak()
 | OCR | OpenAI Vision API, Apple Vision framework (fallback) |
 | Networking | URLSession + async/await |
 | URL extraction | SwiftSoup (HTML parsing) |
-| CI/CD | GitHub Actions + fastlane |
+| CI/CD | GitHub Actions + Apple cloud signing |
 | Distribution | TestFlight (beta), App Store (release) |
 
 ---
@@ -259,11 +259,11 @@ Trigger: Push to main
 Steps:
   1. Checkout code
   2. Install XcodeGen, generate .xcodeproj
-  3. Decode cert from secret → import into temp keychain
-  4. Decode provisioning profile from secret → install
-  5. Build archive with manual signing
-  6. Upload to TestFlight (fastlane pilot)
-  7. Clean up keychain
+  3. Decode App Store Connect API key from secret
+  4. Archive without signing (CODE_SIGNING_REQUIRED=NO)
+  5. Export IPA with -allowProvisioningUpdates (Apple cloud-signs it)
+  6. Upload IPA to TestFlight via altool
+  7. Clean up API key file
 ```
 
 #### 3. `release.yml` — On version tag
@@ -273,42 +273,32 @@ Trigger: Tag v*.*.*
 Steps:
   1. Checkout code
   2. Install XcodeGen, generate .xcodeproj
-  3. Decode cert + profile from secrets → install
-  4. Build release archive
-  5. Upload to App Store Connect (fastlane deliver)
-  6. Clean up keychain
+  3. Decode App Store Connect API key from secret
+  4. Archive without signing
+  5. Export IPA with cloud signing
+  6. Upload IPA to App Store Connect
   7. Create GitHub Release with changelog
 ```
 
 ### Secrets Required (GitHub repo settings)
 
-All signing material goes directly into GitHub Secrets — no separate certificate repository needed.
+Uses **Apple cloud-managed signing** — no certificates or provisioning profiles to manage manually. Apple handles them automatically when you export with an API key.
 
 | Secret | Purpose |
 |---|---|
 | `TEAM_ID` | Apple Developer Team ID |
-| `DISTRIBUTION_CERTIFICATE_BASE64` | Signing certificate (.p12), base64-encoded |
-| `DISTRIBUTION_CERTIFICATE_PASSWORD` | Password for the .p12 file |
-| `PROVISIONING_PROFILE_BASE64` | App Store provisioning profile, base64-encoded |
 | `APP_STORE_CONNECT_API_KEY_ID` | ASC API key ID |
 | `APP_STORE_CONNECT_ISSUER_ID` | ASC API issuer ID |
-| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8 file contents) |
+| `APP_STORE_CONNECT_API_KEY_CONTENT` | ASC API private key (.p8), base64-encoded |
 
-### How signing works in CI
+That's it — 4 secrets total. No certificates, no provisioning profiles, no keychain manipulation.
 
-1. The workflow decodes the base64 certificate and imports it into a temporary macOS keychain
-2. The provisioning profile is decoded and installed to `~/Library/MobileDevice/Provisioning Profiles/`
-3. Fastlane builds with manual signing using the installed cert and profile
-4. The temporary keychain is cleaned up after the build
+### How cloud signing works in CI
 
-### Fastlane Setup
-
-```
-fastlane/
-├── Appfile          # app_identifier, apple_id, team_id
-├── Fastfile         # lanes: test, beta, release
-└── Gymfile          # build settings
-```
+1. `xcodebuild archive` builds the app without any code signing
+2. `xcodebuild -exportArchive` is called with `-allowProvisioningUpdates` and the API key auth flags
+3. Apple's cloud signing service handles certificates and provisioning profiles automatically
+4. The signed IPA is uploaded to App Store Connect / TestFlight
 
 ---
 
@@ -350,7 +340,8 @@ fastlane/
 - Dark/light mode polish
 
 ### Phase 5: Distribution
-- Export signing cert + provisioning profile, base64-encode into GitHub Secrets
+- Create App Store Connect API key, base64-encode into GitHub Secrets
+- Register bundle ID and create app in App Store Connect
 - TestFlight workflow validated
 - App Store submission workflow
 - App Store listing (screenshots, description)
@@ -374,7 +365,7 @@ fastlane/
 | OpenAI for OCR | GPT-4o Vision | Best accuracy, handles any image/screenshot. Apple VN as free fallback |
 | System TTS first | AVSpeechSynthesizer | Free, offline, zero setup. OpenAI TTS later as upgrade |
 | Protocol-based providers | TextInputProvider | Dead simple to add new input types |
-| Direct cert secrets | Base64 in GitHub Secrets | No extra repo, decode into keychain at build time |
+| Apple cloud signing | API key + `-allowProvisioningUpdates` | No certs to manage, no laptop needed, 4 secrets total |
 
 ---
 
