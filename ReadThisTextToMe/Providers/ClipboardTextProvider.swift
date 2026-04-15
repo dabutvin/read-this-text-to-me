@@ -1,8 +1,8 @@
 import UIKit
 
 struct ClipboardTextProvider: TextInputProvider {
-    let id = "clipboard_text"
-    let displayName = "Paste Text"
+    let id = "clipboard"
+    let displayName = "Paste"
     let icon = "doc.on.clipboard"
     let priority = 10
 
@@ -13,6 +13,14 @@ struct ClipboardTextProvider: TextInputProvider {
               !text.isEmpty else {
             throw AppError.noTextFound
         }
+
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let url = URL(string: trimmed),
+           url.scheme == "http" || url.scheme == "https" {
+            return try await URLExtractionService().extractText(from: url)
+        }
+
         return text
     }
 }

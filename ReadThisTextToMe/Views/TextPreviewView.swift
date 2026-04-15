@@ -25,7 +25,7 @@ struct TextPreviewView: View {
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            Text("Paste text, a URL, or pick a photo\nand it will be read aloud")
+            Text("Paste text or a URL, or pick a photo\nand it will be read aloud")
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)

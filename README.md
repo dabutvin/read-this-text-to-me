@@ -6,8 +6,7 @@ Walking around with headphones? Encounter something you want to listen to? Toss 
 
 ## Input Sources
 
-- **Paste Text** — copy text, tap to hear it
-- **Paste URL** — copy a link, app extracts the article text
+- **Paste** — copy text or a URL, tap to hear it (URLs are automatically detected and article text is extracted)
 - **Photo Library** — pick a photo, OCR extracts the text
 - **Camera** — snap a photo of text
 
