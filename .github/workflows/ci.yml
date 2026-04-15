@@ -37,6 +37,7 @@ jobs:
 
       - name: Build
         run: |
+          set -o pipefail
           xcodebuild build \
             -project ReadThisTextToMe.xcodeproj \
             -scheme ReadThisTextToMe \
